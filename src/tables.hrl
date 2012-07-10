@@ -1,0 +1,2 @@
+-record(user, {id, salt, username, password, groups=[]}).
+-record(group, {id, name, parent_groups=[], users=[], groups=[]}).
