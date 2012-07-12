@@ -15,14 +15,15 @@ all:
 	erlc -Wf -o ebin/ src/*erl
 	cp src/*app ebin/
 	cp src/server_auth.key priv/
+	cp src/server_auth.pub priv/
 	pycompile src/*py; mv src/*pyc priv/
 
 install:
 	apt-get install screen erlang libmagickwand-dev python-setuptools
 	easy_install erlport
 
-create-key:
-	python gen_key "src/server_auth.key"
+gen-key:
+	python gen_key
 
 mnesia-create:
 	$(ERL) -name auth@127.0.1.1 -eval 'mnesia:create_schema([node()]).' $(erl_start) -eval 'users:create(), groups:create(), rsa_auth:create().' $(erl_stop)
@@ -32,7 +33,7 @@ mnesia-delete:
 
 mnesia-recreate: mnesia-delete mnesia-create
 
-test: mnesia-recreate 
+test: mnesia-recreate
 	$(ERL) -name auth@127.0.1.1 $(erl_start) -eval 'test:run(["Inaimathi", "Test Co."])' $(erl_stop)
 
 start: 

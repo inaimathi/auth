@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 -include_lib("stdlib/include/qlc.hrl").
 
--export([start/1, stop/0]).
+-export([start/2, stop/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
@@ -27,38 +27,38 @@ verify(UserId, Meta, Sig) -> %% verifies a given Meta/Signature combination for 
     gen_server:call(?MODULE, {verify, UserId, Meta, Sig}).
 %%%%%%%%%%%%%%%%%%%%%%%
 
-handle_call(list, _From, PkPem) ->
+handle_call(list, _From, Keys) ->
     Res = db:do(qlc:q([{X#pubkey.user_id, X#pubkey.pubkey} || X <- mnesia:table(pubkey)])),
-    {reply, Res, PkPem};
-handle_call({find_key, UserId}, _From, PkPem) ->
-    {reply, exists_p(UserId), PkPem}; 
-handle_call({gen_secret, UserId, Meta}, _From, PkPem) -> 
+    {reply, Res, Keys};
+handle_call({find_key, UserId}, _From, Keys) ->
+    {reply, exists_p(UserId), Keys}; 
+handle_call({gen_secret, UserId, Meta}, _From, [Pk, Pub]) -> 
     Pubkey = find({key, UserId}),
     P = common:binary_to_hex(crypto:sha(crypto:rand_bytes(32))),
-    Ciphertext = binary_to_list(m2crypto:encrypt(Pubkey, P)),
+    Ciphertext = m2crypto:encrypt(Pubkey, P),
     Secret = #secret{timestamp=now(), user_id=UserId, user_meta=Meta, plaintext=P},
     db:transaction(fun() -> mnesia:write(Secret) end),
-    Sig = binary_to_list(m2crypto:sign(PkPem, Ciphertext)),
-    {reply, {Ciphertext, Sig}, PkPem};
-handle_call({verify, UserId, Meta, Sig}, _From, PkPem) ->
+    Sig = m2crypto:sign(Pk, Ciphertext),
+    {reply, {Ciphertext, Sig}, [Pk, Pub]};
+handle_call({verify, UserId, Meta, Sig}, _From, Keys) ->
     Pubkey = find({key, UserId}),
     Secrets = find({secrets, UserId, Meta}),
     Res = lists:any(
 	    fun({T, S}) -> verify_key({T, S}, Pubkey, Sig) end, 
 	    Secrets),
-    {reply, Res, PkPem};
-handle_call({change_key, UserId, Pubkey}, _From, PkPem) -> 
+    {reply, Res, Keys};
+handle_call({change_key, UserId, Pubkey}, _From, Keys) -> 
     Res = case exists_p(UserId) of
 	      false -> false;
 	      {_E, _N} -> push_key(UserId, Pubkey)
 	  end,
-    {reply, Res, PkPem};
-handle_call({new_key, UserId, Pubkey}, _From, PkPem) -> 
+    {reply, Res, Keys};
+handle_call({new_key, UserId, Pubkey}, _From, Keys) -> 
     Res = case exists_p(UserId) of
 	      false -> push_key(UserId, Pubkey);
 	      {_E, _N} -> already_exists
 	  end,
-    {reply, Res, PkPem}.
+    {reply, Res, Keys}.
 
 %%% rsa_auth-specific utility
 push_key(UserId, Pubkey) ->
@@ -110,17 +110,15 @@ create() ->
     mnesia:create_table(secret, [{type, ordered_set}, {disc_copies, [node()]}, {attributes, record_info(fields, secret)}]).
 
 %%%%%%%%%%%%%%%%%%%% generic actions
-start(PkFile) -> gen_server:start_link({local, ?MODULE}, ?MODULE, [PkFile], []).
+start(PkFile, PubFile) -> gen_server:start_link({local, ?MODULE}, ?MODULE, [PkFile, PubFile], []).
 stop() -> gen_server:call(?MODULE, stop).
 
 %%%%%%%%%%%%%%%%%%%% gen_server handlers
-init([PkFile]) -> 
-    Res = case filelib:is_regular(PkFile) of
-	      true -> {ok, Pk} = file:read_file(PkFile), Pk;
-	      false -> error("Can't find private key file: " ++ PkFile)
-	  end,
-    {ok, Res}.
-handle_cast(_Msg, PkPem) -> {noreply, PkPem}.
-handle_info(_Info, PkPem) -> {noreply, PkPem}.
-terminate(_Reason, _PkPem) -> ok.
-code_change(_OldVsn, PkPem, _Extra) -> {ok, PkPem}.
+init([PkFile, PubFile]) -> 
+    {ok, Pk} = file:read_file(PkFile),
+    Pub = m2crypto:split_key(PubFile),
+    {ok, [Pk, Pub]}.
+handle_cast(_Msg, Keys) -> {noreply, Keys}.
+handle_info(_Info, Keys) -> {noreply, Keys}.
+terminate(_Reason, _Keys) -> ok.
+code_change(_OldVsn, Keys, _Extra) -> {ok, Keys}.

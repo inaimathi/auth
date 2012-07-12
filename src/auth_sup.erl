@@ -13,8 +13,8 @@ start_link(Args) ->
 init([]) ->
     {ok, {{one_for_one, 3, 10},
 	  [
+	   {m2crypto, {m2crypto, start, []}, permanent, 5000, worker, [m2crypto]},
 	   {users, {users, start, []}, permanent, 5000, worker, [users]},
 	   {groups, {groups, start, []}, permanent, 5000, worker, [groups]},
-	   {rsa_auth, {rsa_auth, start, ["priv/server_auth.key"]}, permanent, 5000, worker, [rsa_auth]},
-	   {m2crypto, {m2crypto, start, []}, permanent, 5000, worker, [m2crypto]}
+	   {rsa_auth, {rsa_auth, start, ["priv/server_auth.key", "priv/server_auth.pub"]}, permanent, 5000, worker, [rsa_auth]}
 	  ]}}.

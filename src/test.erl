@@ -5,6 +5,7 @@ run([Username, GroupName]) ->
     Password = "fiddlesticks",
     test_users(Username, Password),
     test_groups(GroupName, Username),
+    test_rsa_auth(Username),
     io:format("All Tests Passed\n\n").
 
 test_users(Username, Password) ->
@@ -67,3 +68,32 @@ test_groups(GroupName, Username) ->
     {UserId, UserName, []} = users:get(Username),
     {group,GroupId,NewName,[],[],_} = groups:get(GroupId),
     io:format("`groups` Passed\n\n").
+
+test_rsa_auth(Username) ->
+    io:format("testing `rsa_auth`\n"),
+    io:format("   setting up test state\n"),
+    UserId = users:get(Username),
+    {ok, PubKeyPem} = file:read_file("src/server_auth.pub"),
+    {ok, PrivKeyPem} = file:read_file("src/server_auth.key"),
+    IP = "127.0.0.1", AttackerIP = "192.168.1.1",
+    
+    io:format("   testing basics\n"),   
+    Res = rsa_auth:list(), true = is_list(Res),
+    false = rsa_auth:get_key(UserId),
+    false = rsa_auth:change_key(UserId,PubKeyPem),
+
+    io:format("   testing new_key and change_key\n"),   
+    {Exp, N} = rsa_auth:new_key(UserId, PubKeyPem),
+    {Exp, N} = rsa_auth:get_key(UserId),
+    {Exp, N} = rsa_auth:change_key(UserId,PubKeyPem),
+    already_exists = rsa_auth:new_key(UserId, PubKeyPem),
+
+    io:format("   testing gen_secret and verify\n"),   
+    {Secret, Sig} = rsa_auth:gen_secret(UserId, IP),
+    true = m2crypto:verify({Exp, N}, Secret, Sig),
+    Clear = m2crypto:decrypt(PrivKeyPem, Secret), true = is_list(Clear),
+    ClientSig = m2crypto:sign(PrivKeyPem, Clear),
+    false = rsa_auth:verify(UserId, AttackerIP, ClientSig), 
+    true = rsa_auth:verify(UserId, IP, ClientSig),
+    false = rsa_auth:verify(UserId, IP, ClientSig),
+    io:format("`rsa_auth` passed\n").

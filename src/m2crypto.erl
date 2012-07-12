@@ -7,12 +7,17 @@
 
 -export([encrypt/2, verify/3, split_key/1, decrypt/2, sign/2]).
 
-encrypt({E, N}, Message) -> gen_server:call(?MODULE, {encrypt, E, N, Message}).
-verify({E, N}, Message, Signature) -> gen_server:call(?MODULE, {verify, E, N, Message, Signature}).
-split_key(Filename) -> gen_server:call(?MODULE, {split_key, Filename}).
+encrypt({E, N}, Message) -> 
+    binary_to_list(gen_server:call(?MODULE, {encrypt, E, N, Message})).
+verify({E, N}, Message, Signature) -> 
+    gen_server:call(?MODULE, {verify, E, N, Message, Signature}).
+split_key(Filename) -> 
+    gen_server:call(?MODULE, {split_key, Filename}).
 
-decrypt(PkPem, Message) -> gen_server:call(?MODULE, {decrypt, PkPem, Message}).
-sign(PkPem, Message) -> gen_server:call(?MODULE, {sign, PkPem, Message}).
+decrypt(PkPem, Message) -> 
+    extract_string(gen_server:call(?MODULE, {decrypt, PkPem, Message})).
+sign(PkPem, Message) -> 
+    binary_to_list(gen_server:call(?MODULE, {sign, PkPem, Message})).
     
 handle_call({'EXIT', _Port, Reason}, _From, _State) ->
     exit({port_terminated, Reason});
@@ -24,6 +29,13 @@ handle_call(Message, _From, Port) ->
     after 3000 -> 
 	    exit(timeout)
     end.
+
+extract_string(Bin) when is_binary(Bin) ->
+    extract_string(Bin, []).
+extract_string(<<Letter, 0, 0, 0, Rest/binary>>, Acc) ->
+    extract_string(Rest, [Letter | Acc]);
+extract_string(<<>>, Acc) -> 
+    lists:reverse(Acc).
 
 %%%%%%%%%%%%%%%%%%%% generic actions
 start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).

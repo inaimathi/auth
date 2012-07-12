@@ -2,7 +2,8 @@
 
 import M2Crypto, sys
 
-print 'generating private key at `' + sys.argv[1] + '`'
+print 'generating server keys'
 Cert = M2Crypto.RSA.gen_key(4096, 65537)
-Cert.save_key(sys.argv[1], cipher=None)
+Cert.save_key("src/server_auth.key", cipher=None)
+Cert.save_pub_key("src/server_auth.pub")
 print 'done'
