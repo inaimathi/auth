@@ -1,11 +1,6 @@
 *~
-*.beam
 Mnesia*
 *dump
 *log
-*.pyc
-deps/*
-priv/*
-ebin/*
 *.key
 *.pub
