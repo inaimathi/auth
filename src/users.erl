@@ -7,12 +7,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--export([list/0, get_user/1, register/2, change_password/2, auth/2]).
--export([create/0]).
+-export([list/0, get/1, register/2, change_password/2, auth/2]).
+-export([create/0, find/1]).
 
 list() -> gen_server:call(?MODULE, list).
-get_user(Identifier) -> gen_server:call(?MODULE, {get_user, Identifier}).
 register(Username, Password) -> gen_server:call(?MODULE, {register, Username, Password}).
+get(Identifier) -> gen_server:call(?MODULE, {get_user, Identifier}).
 change_password(Username, NewPassword) -> 
     gen_server:call(?MODULE, {change_pass, Username, NewPassword}).
 auth(Username, Password) -> 
@@ -31,9 +31,12 @@ auth(Username, Password) ->
 
 handle_call(list, _From, State) -> 
     {reply, db:do(qlc:q([{X#user.id, X#user.username, X#user.groups} || X <- mnesia:table(user)])), State};
-handle_call({get_id, Name}, _From, State) ->
-    User = find(Name),
-    {reply, {User#user.id, User#user.username, User#user.groups}, State};
+handle_call({get_user, Identifier}, _From, State) ->
+    Res = case exists_p(Identifier) of
+	      false -> false;
+	      User -> {User#user.id, User#user.username, User#user.groups}
+	  end,
+    {reply, Res, State};
 handle_call({register, Username, Password}, _From, State) -> 
     Res = case exists_p(Username) of
 	      false -> Salt = crypto:rand_bytes(32),

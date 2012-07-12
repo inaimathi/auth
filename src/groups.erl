@@ -7,7 +7,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--export([list/0, list/1, add/1, add/2, rename/2, add_to/2, remove_from/2]).
+-export([list/0, get/1, list/1, add/1, add/2, rename/2, add_to/2, remove_from/2]).
 -export([create/0]).
 
 list() -> 
@@ -16,6 +16,9 @@ list(Parent) when is_tuple(Parent) ->
     gen_server:call(?MODULE, {list, [Parent]});
 list(Parents) -> 
     gen_server:call(?MODULE, {list, Parents}).
+
+get(GroupId) ->
+    gen_server:call(?MODULE, {get_group, GroupId}).
 
 add(GroupName) ->
     gen_server:call(?MODULE, {new_group, GroupName}).
@@ -36,6 +39,13 @@ remove_from(GroupId, {user, UserName}) ->
 handle_call({list, Parents}, _From, State) ->
     Res = db:do(qlc:q([X || X <- mnesia:table(group), X#group.parent_groups =:= Parents])),
     {reply, Res, State};
+handle_call({get_group, GroupId}, _From, State) ->
+    Res = try
+	      find(GroupId)
+	  catch
+	      error:_ -> false
+	  end,
+    {reply, Res, State};		  
 handle_call({new_group, GroupName}, _From, State) -> 
     Id = now(),
     db:atomic_insert(#group{id=Id, name=GroupName}),
