@@ -1,0 +1,8 @@
+#!/usr/bin/python
+
+import M2Crypto, sys
+
+print 'generating private key at `' + sys.argv[1] + '`'
+Cert = M2Crypto.RSA.gen_key(4096, 65537)
+Cert.save_key(sys.argv[1], cipher=None)
+print 'done'

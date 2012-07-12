@@ -18,7 +18,7 @@ test_users(Username, Password) ->
     NewPass = Password ++ "nope",
     io:format("*********** expected error incoming ***********\n"),
     false = users:auth(Username, NewPass),
-    io:format("*********** expected error passed *************\n"),
+    io:format("*********** expected error resolved ***********\n"),
     ok = users:change_password(Username, NewPass),
     {UserId, Username, Groups} = users:auth(Username, NewPass),
     io:format("`users` Passed\n\n").
@@ -52,7 +52,7 @@ test_groups(GroupName, Username) ->
     MoreGroups = groups:list(), true = is_list(MoreGroups),
 
     io:format("   testing users\n"),
-    %%% group members (adding/removing by user name then by user id, both of which are unique and therefore valid)
+    %%% group members (adding/removing by user name then by user id, both of which are unique and therefore valid lookups)
     ok = groups:add_to(GroupId, {user, Username}),
     {UserId, UserName, [GroupId]} = users:get(Username),
     {group,GroupId,NewName,[],[UserId],_} = groups:get(GroupId),

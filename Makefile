@@ -21,11 +21,8 @@ install:
 	apt-get install screen erlang libmagickwand-dev python-setuptools
 	easy_install erlport
 
-gen-rel:
-	$(ERL) $(erl_start) $(erl_gen_rel) $(erl_stop)
-
-gen-build: gen-rel
-	$(ERL) $(erl_start) $(erl_build) $(erl_stop)
+create-key:
+	python gen_key "src/server_auth.key"
 
 mnesia-create:
 	$(ERL) -name auth@127.0.1.1 -eval 'mnesia:create_schema([node()]).' $(erl_start) -eval 'users:create(), groups:create(), rsa_auth:create().' $(erl_stop)

@@ -5,15 +5,14 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--export([encrypt/2, verify/3, split_key/1, decrypt/2, decrypt/3, sign/2, sign/3]).
+-export([encrypt/2, verify/3, split_key/1, decrypt/2, sign/2]).
 
 encrypt({E, N}, Message) -> gen_server:call(?MODULE, {encrypt, E, N, Message}).
 verify({E, N}, Message, Signature) -> gen_server:call(?MODULE, {verify, E, N, Message, Signature}).
 split_key(Filename) -> gen_server:call(?MODULE, {split_key, Filename}).
-sign(PkPem, Message) -> sign(PkPem, false, Message).
-sign(PkPem, Password, Message) -> gen_server:call(?MODULE, {sign, PkPem, Password, Message}).
-decrypt(PkPem, Message) -> decrypt(PkPem, false, Message).
-decrypt(PkPem, Password, Message) -> gen_server:call(?MODULE, {decrypt, PkPem, Password, Message}).
+
+decrypt(PkPem, Message) -> gen_server:call(?MODULE, {decrypt, PkPem, Message}).
+sign(PkPem, Message) -> gen_server:call(?MODULE, {sign, PkPem, Message}).
     
 handle_call({'EXIT', _Port, Reason}, _From, _State) ->
     exit({port_terminated, Reason});
