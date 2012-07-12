@@ -43,7 +43,7 @@ handle_call({register, Username, Password}, _From, State) ->
 		       Id = now(),
 		       User = #user{id=Id, username=Username, password=salt(Salt, Password), salt=Salt},
 		       db:transaction(fun() -> mnesia:write(User) end),
-		       {Id, Username};
+		       {Id, Username, []};
 	      _ -> already_exists
 	  end,
     {reply, Res, State};

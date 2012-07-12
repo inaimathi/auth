@@ -11,7 +11,7 @@ run([Username, GroupName]) ->
 test_users(Username, Password) ->
     io:format("testing `users`\n"),
     Users = users:list(), true = is_list(Users),
-    {UserId, Username} = users:register(Username, Password),
+    {UserId, Username, []} = users:register(Username, Password),
     already_exists = users:register(Username, Password),
     {UserId, Username, Groups} = users:get(UserId),
     {UserId, Username, Groups} = users:get(Username),
