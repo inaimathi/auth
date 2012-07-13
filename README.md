@@ -23,7 +23,6 @@ The goal of this module is to be a production-ready user system, but it's still 
 - Some functions error on improper input, others return `false` or `already_exists`. That should be consistent across the system, at least.
 - `rsa_auth:verify/3` returns `true` instead of a user record on success
 - a lot of the `groups` functions return records rather than pared down representations
-- the `groups:add_to/\d` and `groups:remove_from/\d` functions **don't** check if what they're being asked makes sense (`add_to` will add duplicate users/subgroups, and `remove_from` will return `ok` even if it removed nothing). They should do a quick check and either return or error in case of inconsistency
 
 ### groups
 
