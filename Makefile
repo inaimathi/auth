@@ -19,7 +19,7 @@ all:
 	pycompile src/*py; mv src/*pyc priv/
 
 install:
-	apt-get install screen erlang libmagickwand-dev python-setuptools
+	apt-get install screen erlang python-setuptools
 	easy_install erlport
 
 gen-key:

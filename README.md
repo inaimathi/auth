@@ -3,7 +3,20 @@
 *Production-worthy, generic authentication system. Currently implements both password-based and RSA-key-based authentication calls.*
 *Coming Soon: Two Factor Authentication*
 
-## NOTE
+### Dependencies
+
+**auth** requires
+
+-[erlang](http://www.erlang.org/) (duh)
+-[python 2.x](http://www.python.org/getit/releases/2.7/) (comes standard with Debian linux, available pretty much everywhere)
+-[erlport](http://erlport.org/) (available through [setuptools](http://pypi.python.org/pypi/setuptools); if you're on Debian, you can run `make install` as root, the project Makefile includes everything you'll need)
+
+**auth** depends on 
+
+-[erlsha2](https://github.com/vinoski/erlsha2) (an implementation of the SHA-2 cryptographic hashing functions in Erlang/C) and 
+-[common]() (a still very small set of Erlang utility functions I use in a bunch of different places. At this point it just glosses over some odd bits of the `mnesia` api, and provides basic utility functions).
+
+### NOTE
 
 The goal of this module is to be a production-ready user system, but it's still in the early-ish stages of development. The following is documentation about what modules *currently* do. There are still some inconsitancies, and things I **know** will be changing shortly. Notably:
 
@@ -38,13 +51,13 @@ Adds a new subgroup to `ParentId` named `GroupName`.
     
 Renames the specified group. Errors if nonexistant group is specified
 
-    add_to (GroupId, {user, ChildId} || {group, ChildId}) -> ok || error
+    add_to (GroupId, {user, ChildId} || {group, ChildId}) -> ok || false || error
 
-Adds a subgroup or user to the specified group. Errors if either parent or child don't exist. Adds naively if the child is already a child of the parent.
+Adds a subgroup or user to the specified group. Errors if either parent or child don't exist. Returns false if either parent or child is already related to the other.
 
-    remove_from(GroupId, {user, ChildId} || {group, ChildId}) -> ok || error
+    remove_from(GroupId, {user, ChildId} || {group, ChildId}) -> ok || false || error
 
-Removes a subgroup or user from the specified group. Errors if either parent or child don't exists. Returns `ok`, but does nothing if the specified child is not already a child of the parent.
+Removes a subgroup or user from the specified group. Errors if either parent or child don't exists. Returns `false`, but does nothing if the specified child is not already a child of the parent.
 
 ### users
 
