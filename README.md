@@ -14,7 +14,7 @@
 **auth** depends on 
 
 - [erlsha2](https://github.com/vinoski/erlsha2) (an implementation of the SHA-2 cryptographic hashing functions in Erlang/C) and 
-- [common]() (a still very small set of Erlang utility functions I use in a bunch of different places. At this point it just glosses over some odd bits of the `mnesia` api, and provides basic utility functions).
+- [common](https://github.com/Inaimathi/common) (a still very small set of Erlang utility functions I use in a bunch of different places. At this point it just glosses over some odd bits of the `mnesia` api, and provides basic utility functions).
 
 ### NOTE
 
@@ -110,4 +110,4 @@ Verifies a given Meta/Signature combination for a given user. Returns `true` if 
 
     run/1 ([Username, Groupname]) -> test output (hopefully no errors)
     
-This module assumes it's running on a fresh database, and requires a unique `Username` and `Groupname`, otherwise odd errors will show up. Run it through `make test` rather than manually.
+This module assumes it's running on a fresh database, and requires a unique `Username` and `Groupname`, otherwise odd errors will show up. Run it through `make test` rather than manually. Note that the make rule deletes any existing mnesia database as part of operation, so don't run it on a production server.
