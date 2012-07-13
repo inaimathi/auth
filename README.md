@@ -7,14 +7,14 @@
 
 **auth** requires
 
--[erlang](http://www.erlang.org/) (duh)
--[python 2.x](http://www.python.org/getit/releases/2.7/) (comes standard with Debian linux, available pretty much everywhere)
--[erlport](http://erlport.org/) (available through [setuptools](http://pypi.python.org/pypi/setuptools); if you're on Debian, you can run `make install` as root, the project Makefile includes everything you'll need)
+- [erlang](http://www.erlang.org/) (duh)
+- [python 2.x](http://www.python.org/getit/releases/2.7/) (comes standard with Debian linux, available pretty much everywhere)
+- [erlport](http://erlport.org/) (available through [setuptools](http://pypi.python.org/pypi/setuptools); if you're on Debian, you can run `make install` as root, the project Makefile includes everything you'll need)
 
 **auth** depends on 
 
--[erlsha2](https://github.com/vinoski/erlsha2) (an implementation of the SHA-2 cryptographic hashing functions in Erlang/C) and 
--[common]() (a still very small set of Erlang utility functions I use in a bunch of different places. At this point it just glosses over some odd bits of the `mnesia` api, and provides basic utility functions).
+- [erlsha2](https://github.com/vinoski/erlsha2) (an implementation of the SHA-2 cryptographic hashing functions in Erlang/C) and 
+- [common]() (a still very small set of Erlang utility functions I use in a bunch of different places. At this point it just glosses over some odd bits of the `mnesia` api, and provides basic utility functions).
 
 ### NOTE
 
