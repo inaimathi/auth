@@ -110,4 +110,4 @@ Verifies a given Meta/Signature combination for a given user. Returns `true` if 
 
     run/1 ([Username, Groupname]) -> test output (hopefully no errors)
     
-This module assumes it's running on a fresh database, and requires a unique `Username` and `Groupname`, otherwise odd errors will show up. Run it through `make test` rather than manually. Note that the make rule deletes any existing mnesia database as part of operation, so don't run it on a production server.
+This module assumes it's running on a fresh database, and requires a unique `Username` and `Groupname`, otherwise odd errors will show up. Run it by using `make test` rather than manually (the `make` rule creates a fresh mnesia database and deletes it when its done).
