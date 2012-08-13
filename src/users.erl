@@ -30,15 +30,15 @@ auth(Username, Password) ->
     end.
 
 handle_call(list, _From, State) -> 
-    {reply, db:do(qlc:q([{X#user.id, X#user.username, X#user.groups} || X <- mnesia:table(user)])), State};
+    {reply, db:list(user, [#user.id, #user.username, #user.groups]), State};
 handle_call({get_user, Identifier}, _From, State) ->
-    Res = case exists_p(Identifier) of
+    Res = case find(Identifier) of
 	      false -> false;
 	      User -> {User#user.id, User#user.username, User#user.groups}
 	  end,
     {reply, Res, State};
 handle_call({register, Username, Password}, _From, State) -> 
-    Res = case exists_p(Username) of
+    Res = case find(Username) of
 	      false -> Salt = crypto:rand_bytes(32),
 		       Id = now(),
 		       User = #user{id=Id, username=Username, password=salt(Salt, Password), salt=Salt},
@@ -59,19 +59,8 @@ salt(Salt, String) ->
 create() -> 
     mnesia:create_table(user, [{type, ordered_set}, {disc_copies, [node()]}, {attributes, record_info(fields, user)}]).
 
-exists_p(Username) -> 
-    try
-	find(Username)
-    catch
-	error:_ -> false
-    end.
-
-find(Id) when is_tuple(Id) ->
-    [Rec] = db:do(qlc:q([X || X <- mnesia:table(user), X#user.id =:= Id])),
-    Rec;
-find(Name) -> 
-    [Rec] = db:do(qlc:q([X || X <- mnesia:table(user), X#user.username =:= Name])),
-    Rec.
+find(Id) when is_tuple(Id) -> db:find(user, #user.id, Id);
+find(Name) -> db:find(user, #user.username, Name).
 
 %%%%%%%%%%%%%%%%%%%% generic actions
 start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).

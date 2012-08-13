@@ -7,7 +7,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--export([list/0, get/1, list/1, add/1, add/2, rename/2, add_to/2, remove_from/2]).
+-export([list/0, get/1, list/1, add/1, add/2, add_special/2, rename/2, add_to/2, remove_from/2]).
 -export([create/0]).
 
 list() -> 
@@ -21,9 +21,11 @@ get(GroupId) ->
     gen_server:call(?MODULE, {get_group, GroupId}).
 
 add(GroupName) ->
-    gen_server:call(?MODULE, {new_group, GroupName}).
+    gen_server:call(?MODULE, {new_group, now(), GroupName}).
 add(GroupName, ParentGroupId) ->
     gen_server:call(?MODULE, {insert_subgroup, GroupName, ParentGroupId}).
+add_special(GroupId, GroupName) ->
+    gen_server:call(?MODULE, {new_group, GroupId, GroupName}).
 
 rename(GroupId, NewName) -> gen_server:call(?MODULE, {change, name, GroupId, NewName}).
 
@@ -40,14 +42,8 @@ handle_call({list, Parents}, _From, State) ->
     Res = db:do(qlc:q([X || X <- mnesia:table(group), X#group.parent_groups =:= Parents])),
     {reply, Res, State};
 handle_call({get_group, GroupId}, _From, State) ->
-    Res = try
-	      find(GroupId)
-	  catch
-	      error:_ -> false
-	  end,
-    {reply, Res, State};		  
-handle_call({new_group, GroupName}, _From, State) -> 
-    Id = now(),
+    {reply, find(GroupId), State};		  
+handle_call({new_group, Id, GroupName}, _From, State) -> 
     db:atomic_insert(#group{id=Id, name=GroupName}),
     {reply, Id, State};
 handle_call({insert_subgroup, GroupName, ParentGroupId}, _From, State) ->
@@ -57,7 +53,7 @@ handle_call({insert_subgroup, GroupName, ParentGroupId}, _From, State) ->
     F = fun() -> mnesia:write(Record), 
 		 mnesia:write(db:push_to(#group.groups, ParentGroup, Record#group.id))
 	end,
-    ok = db:transaction(F),
+    db:transaction(F),
     {reply, Id, State};
 handle_call({add_group, Parent, Child}, _From, State) ->
     Val = db:relate(Parent, #group.id, #group.groups, Child, #group.id, #group.parent_groups),
@@ -77,9 +73,7 @@ handle_call({change, name, GroupId, NewValue}, _From, State) ->
     {reply, db:atomic_insert(NewRec), State}.
 
 %%%%%%%%%%%%%%%%%%%% database related
-find(GroupId) ->
-    [Rec] = db:do(qlc:q([X || X <- mnesia:table(group), X#group.id =:= GroupId])),
-    Rec.
+find(GroupId) -> db:find(group, #group.id, GroupId).
 
 create() -> 
     mnesia:create_table(group, [{type, ordered_set}, {disc_copies, [node()]}, {attributes, record_info(fields, group)}]).

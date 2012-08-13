@@ -1,8 +1,9 @@
 -module(rsa_auth).
 -behaviour(gen_server).
 -include_lib("stdlib/include/qlc.hrl").
+-include_lib("tables.hrl").
 
--export([start/2, stop/0]).
+-export([start/0, stop/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
@@ -28,12 +29,13 @@ verify(UserId, Meta, Sig) -> %% verifies a given Meta/Signature combination for 
 %%%%%%%%%%%%%%%%%%%%%%%
 
 handle_call(list, _From, Keys) ->
-    Res = db:do(qlc:q([{X#pubkey.user_id, X#pubkey.pubkey} || X <- mnesia:table(pubkey)])),
-    {reply, Res, Keys};
+    {reply, db:list(pubkey, [#pubkey.user_id, #pubkey.pubkey]), Keys};
 handle_call({find_key, UserId}, _From, Keys) ->
-    {reply, exists_p(UserId), Keys}; 
-handle_call({gen_secret, UserId, Meta}, _From, [Pk, Pub]) -> 
-    Pubkey = find({key, UserId}),
+    #pubkey{pubkey=Pubkey}=find(UserId),
+    {reply, Pubkey, Keys}; 
+handle_call({gen_secret, User, Meta}, _From, [Pk, Pub]) -> 
+    #user{id=UserId} = users:find(User),
+    #pubkey{pubkey=Pubkey}=find(UserId),
     P = common:binary_to_hex(crypto:sha(crypto:rand_bytes(32))),
     Ciphertext = m2crypto:encrypt(Pubkey, P),
     Secret = #secret{timestamp=now(), user_id=UserId, user_meta=Meta, plaintext=P},
@@ -41,20 +43,20 @@ handle_call({gen_secret, UserId, Meta}, _From, [Pk, Pub]) ->
     Sig = m2crypto:sign(Pk, Ciphertext),
     {reply, {Ciphertext, Sig}, [Pk, Pub]};
 handle_call({verify, UserId, Meta, Sig}, _From, Keys) ->
-    Pubkey = find({key, UserId}),
-    Secrets = find({secrets, UserId, Meta}),
+    #pubkey{pubkey=Pubkey} = find(UserId),
+    Secrets = get_secrets(UserId, Meta),
     Res = lists:any(
 	    fun({T, S}) -> verify_key({T, S}, Pubkey, Sig) end, 
 	    Secrets),
     {reply, Res, Keys};
 handle_call({change_key, UserId, Pubkey}, _From, Keys) -> 
-    Res = case exists_p(UserId) of
+    Res = case find(UserId) of
 	      false -> false;
 	      {_E, _N} -> push_key(UserId, Pubkey)
 	  end,
     {reply, Res, Keys};
 handle_call({new_key, UserId, Pubkey}, _From, Keys) -> 
-    Res = case exists_p(UserId) of
+    Res = case find(UserId) of
 	      false -> push_key(UserId, Pubkey);
 	      {_E, _N} -> already_exists
 	  end,
@@ -88,18 +90,9 @@ old_secret_p(T) ->
     %% it's old if the timestamp is older than 5 minutes
     300 < (common:now_to_seconds(now()) - common:now_to_seconds(T)).
 
-exists_p(UserId) -> 
-    try
-	find({key, UserId})
-    catch
-	error:_ -> false
-    end.
-
 %%%%%%%%%%%%%%%%%%%% DB-related utility
-find({key, UserId}) -> 
-    [Rec] = db:do(qlc:q([X#pubkey.pubkey || X <- mnesia:table(pubkey), X#pubkey.user_id =:= UserId])),
-    Rec;
-find({secrets, UserId, Meta}) -> 
+find(UserId) -> db:find(pubkey, #pubkey.user_id, UserId).
+get_secrets(UserId, Meta) ->
     db:do(qlc:q([{X#secret.timestamp, X#secret.plaintext} 
 		 || X <- mnesia:table(secret), 
 		    X#secret.user_id =:= UserId, 
@@ -110,11 +103,21 @@ create() ->
     mnesia:create_table(secret, [{type, ordered_set}, {disc_copies, [node()]}, {attributes, record_info(fields, secret)}]).
 
 %%%%%%%%%%%%%%%%%%%% generic actions
-start(PkFile, PubFile) -> gen_server:start_link({local, ?MODULE}, ?MODULE, [PkFile, PubFile], []).
+start() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 stop() -> gen_server:call(?MODULE, stop).
 
 %%%%%%%%%%%%%%%%%%%% gen_server handlers
-init([PkFile, PubFile]) -> 
+init([]) -> 
+    DirName = case code:priv_dir(?MODULE) of
+		  {error, bad_name} ->
+		      %% this is here for testing purposes
+		      filename:join(
+			[filename:dirname(
+			   code:which(?MODULE)),"..","priv"]);
+		  Dir -> Dir
+	      end,
+    PkFile = filename:join(DirName, "server_auth.key"),
+    PubFile = filename:join(DirName, "server_auth.pub"),
     {ok, Pk} = file:read_file(PkFile),
     Pub = m2crypto:split_key(PubFile),
     {ok, [Pk, Pub]}.
