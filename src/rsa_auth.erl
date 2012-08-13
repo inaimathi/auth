@@ -42,12 +42,15 @@ handle_call({gen_secret, User, Meta}, _From, [Pk, Pub]) ->
     db:transaction(fun() -> mnesia:write(Secret) end),
     Sig = m2crypto:sign(Pk, Ciphertext),
     {reply, {Ciphertext, Sig}, [Pk, Pub]};
-handle_call({verify, UserId, Meta, Sig}, _From, Keys) ->
+handle_call({verify, User, Meta, Sig}, _From, Keys) ->
+    #user{id=UserId} = users:find(User),
     #pubkey{pubkey=Pubkey} = find(UserId),
     Secrets = get_secrets(UserId, Meta),
-    Res = lists:any(
-	    fun({T, S}) -> verify_key({T, S}, Pubkey, Sig) end, 
-	    Secrets),
+    Verified = lists:any(fun({T, S}) -> verify_key({T, S}, Pubkey, Sig) end, Secrets),
+    Res = case Verified of
+	      true -> users:get(User);
+	      _ -> false
+	  end,
     {reply, Res, Keys};
 handle_call({change_key, UserId, Pubkey}, _From, Keys) -> 
     Res = case find(UserId) of
