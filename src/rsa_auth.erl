@@ -8,7 +8,7 @@
 	 terminate/2, code_change/3]).
 
 -export([gen_secret/2, verify/3, new_key/2, change_key/2]).
--export([create/0, get_key/1, list/0, validate_keystring/1]).
+-export([create/0, get_key/0, get_key/1, list/0, validate_keystring/1]).
 
 -record(pubkey, {user_id, pubkey}).
 -record(secret, {timestamp, user_id, user_meta, plaintext}).
@@ -16,6 +16,8 @@
 %%%%%%%%%% external API
 list() -> %% lists all user_id/pubkey pairs
     gen_server:call(?MODULE, list).
+get_key() ->
+    gen_server:call(?MODULE, server_key).
 get_key(UserId) -> %% returns a given users' key, or 'false' if that user has no key
     try 
 	gen_server:call(?MODULE, {find_key, UserId})
@@ -43,6 +45,8 @@ verify(UserId, Meta, Sig) -> %% verifies a given Meta/Signature combination for 
 
 handle_call(list, _From, Keys) ->
     {reply, db:list(pubkey, [#pubkey.user_id, #pubkey.pubkey]), Keys};
+handle_call(server_key, _From, [Pk, Pub, PubString]) ->
+    {reply, PubString, [Pk, Pub, PubString]};
 handle_call({find_key, UserId}, _From, Keys) ->
     Res = try
 	      #pubkey{pubkey=Pubkey}=find(UserId),
@@ -51,7 +55,7 @@ handle_call({find_key, UserId}, _From, Keys) ->
 	      error:_ -> false
 	  end,
     {reply, Res, Keys}; 
-handle_call({gen_secret, User, Meta}, _From, [Pk, Pub]) -> 
+handle_call({gen_secret, User, Meta}, _From, [Pk, Pub, PubString]) -> 
     #user{id=UserId} = users:find(User),
     #pubkey{pubkey=Pubkey}=find(UserId),
     P = common:binary_to_hex(crypto:sha(crypto:rand_bytes(32))),
@@ -59,7 +63,7 @@ handle_call({gen_secret, User, Meta}, _From, [Pk, Pub]) ->
     Secret = #secret{timestamp=now(), user_id=UserId, user_meta=Meta, plaintext=P},
     db:transaction(fun() -> mnesia:write(Secret) end),
     Sig = m2crypto:sign(Pk, Ciphertext),
-    {reply, {Ciphertext, Sig}, [Pk, Pub]};
+    {reply, {Ciphertext, Sig}, [Pk, Pub, PubString]};
 handle_call({verify, User, Meta, Sig}, _From, Keys) ->
     #user{id=UserId} = users:find(User),
     #pubkey{pubkey=Pubkey} = find(UserId),
@@ -140,8 +144,9 @@ init([]) ->
     PkFile = filename:join(DirName, "server_auth.key"),
     PubFile = filename:join(DirName, "server_auth.pub"),
     {ok, Pk} = file:read_file(PkFile),
+    {ok, PubString} = file:read_file(PubFile),
     Pub = m2crypto:split_key(PubFile),
-    {ok, [Pk, Pub]}.
+    {ok, [Pk, Pub, binary_to_list(PubString)]}.
 handle_cast(_Msg, Keys) -> {noreply, Keys}.
 handle_info(_Info, Keys) -> {noreply, Keys}.
 terminate(_Reason, _Keys) -> ok.

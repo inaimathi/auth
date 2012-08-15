@@ -86,6 +86,10 @@ Returns the user record if proper authentication information is given. Returns `
 
 lists all user_id/pubkey pairs
 
+    get_key/0 () -> PubKey
+    
+returns a string representation of the server public key
+
     get_key/1 (UserId) -> PubKey 
 
 returns a given users' key, or 'false' if that user has no key
