@@ -97,6 +97,10 @@ Sets the specified users' public key or returns `already_exists`.
     change_key/2 (UserId, Pubkey) -> PubKey || false 
 
 Changes the key for an existing user, returns `false` if the specified user doesn't exist.
+
+    validate_keystring/2 (KeyString) -> true || false
+
+Takes a string and returns `true` if it is a valid RSA public key. Returns `false` otherwise.
     
     gen_secret/2 (UserId, Meta) -> {Secret, Sig}
 
