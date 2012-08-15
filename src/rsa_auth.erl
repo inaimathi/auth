@@ -8,7 +8,7 @@
 	 terminate/2, code_change/3]).
 
 -export([gen_secret/2, verify/3, new_key/2, change_key/2]).
--export([create/0, get_key/1, list/0]).
+-export([create/0, get_key/1, list/0, validate_keystring/1]).
 
 -record(pubkey, {user_id, pubkey}).
 -record(secret, {timestamp, user_id, user_meta, plaintext}).
@@ -17,7 +17,20 @@
 list() -> %% lists all user_id/pubkey pairs
     gen_server:call(?MODULE, list).
 get_key(UserId) -> %% returns a given users' key, or 'false' if that user has no key
-    gen_server:call(?MODULE, {find_key, UserId}).
+    try 
+	gen_server:call(?MODULE, {find_key, UserId})
+    catch
+	error:_ -> false
+    end.
+validate_keystring(KeyString) ->
+    Fname = common:make_tempname(),
+    file:write_file(Fname, KeyString),
+    Res = case m2crypto:split_key(Fname) of
+	      false -> false;
+	      {_E, _N} -> true
+	  end,
+    file:delete(Fname),
+    Res.
 new_key(UserId, Pubkey) ->  %% adds the given key to the given user
     gen_server:call(?MODULE, {new_key, UserId, Pubkey}).
 change_key(UserId, Pubkey) -> %% changes the key for an existing user
@@ -31,8 +44,13 @@ verify(UserId, Meta, Sig) -> %% verifies a given Meta/Signature combination for 
 handle_call(list, _From, Keys) ->
     {reply, db:list(pubkey, [#pubkey.user_id, #pubkey.pubkey]), Keys};
 handle_call({find_key, UserId}, _From, Keys) ->
-    #pubkey{pubkey=Pubkey}=find(UserId),
-    {reply, Pubkey, Keys}; 
+    Res = try
+	      #pubkey{pubkey=Pubkey}=find(UserId),
+	      Pubkey
+	  catch
+	      error:_ -> false
+	  end,
+    {reply, Res, Keys}; 
 handle_call({gen_secret, User, Meta}, _From, [Pk, Pub]) -> 
     #user{id=UserId} = users:find(User),
     #pubkey{pubkey=Pubkey}=find(UserId),

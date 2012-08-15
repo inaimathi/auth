@@ -26,8 +26,11 @@ class M2cryptoProtocol(Protocol):
         clear = Key.private_decrypt(String(message).decode('base64'), M2Crypto.RSA.pkcs1_oaep_padding)
         return clear
     def handle_split_key(self, filename):
-        pubkey = M2Crypto.RSA.load_pub_key(String(filename))
-        return (pubkey.e, pubkey.n)
+        try:
+            pubkey = M2Crypto.RSA.load_pub_key(String(filename))
+            return (pubkey.e, pubkey.n)
+        except:
+            return False
 
 if __name__ == "__main__":
     M2cryptoProtocol().run(Port(packet=4, use_stdio=True))
