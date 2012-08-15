@@ -73,13 +73,13 @@ handle_call({verify, User, Meta, Sig}, _From, Keys) ->
 handle_call({change_key, UserId, Pubkey}, _From, Keys) -> 
     Res = case find(UserId) of
 	      false -> false;
-	      {_E, _N} -> push_key(UserId, Pubkey)
+	      #pubkey{} -> push_key(UserId, Pubkey)
 	  end,
     {reply, Res, Keys};
 handle_call({new_key, UserId, Pubkey}, _From, Keys) -> 
     Res = case find(UserId) of
 	      false -> push_key(UserId, Pubkey);
-	      {_E, _N} -> already_exists
+	      #pubkey{} -> already_exists
 	  end,
     {reply, Res, Keys}.
 
